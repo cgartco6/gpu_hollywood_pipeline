@@ -1,0 +1,42 @@
+from core.planner import Planner
+from core.orchestrator import Orchestrator
+from tools.ffmpeg import render_video_sequence
+from tools.utils import save_json, ensure_dir
+
+
+class Pipeline:
+
+    def __init__(self):
+
+        self.planner = Planner()
+        self.orchestrator = Orchestrator()
+
+    def run(self, prompt: str):
+
+        ensure_dir("outputs")
+
+        # 1. PLAN
+        plan = self.planner.create(prompt)
+        save_json(plan, "outputs/plan.json")
+
+        # 2. EXECUTE SCENES
+        results = []
+
+        for scene in plan["scenes"]:
+            results.append(self.orchestrator.run(scene))
+
+        # 3. EXTRACT VIDEOS
+        video_files = [r["video"] for r in results]
+
+        # 4. ASSEMBLE FINAL VIDEO
+        final_video = render_video_sequence(video_files)
+
+        output = {
+            "plan": plan,
+            "results": results,
+            "final_video": final_video
+        }
+
+        save_json(output, "outputs/final_output.json")
+
+        return output
